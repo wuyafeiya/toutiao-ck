@@ -1,10 +1,15 @@
 <template>
-  <router-view></router-view>
+  <div>
+      <h4>qa</h4>
+  </div>
 </template>
 
 <script>
-export default {}
+export default {
+
+}
 </script>
 
 <style>
+
 </style>

@@ -1,5 +1,7 @@
 <template>
-  <router-view></router-view>
+  <div>
+    <h4>video</h4>
+  </div>
 </template>
 
 <script>
