@@ -26,33 +26,11 @@
           <div slot="label" class="publish-date">
             {{ article.pubdate | relativeTime }}
           </div>
-          <van-button
-            v-if="article.is_followed"
+          <followUser
             class="follow-btn"
-            round
-            :loading="isFollowLoading"
-            size="small"
-            >已关注</van-button
-          >
-          <van-button
-            v-else
-            class="follow-btn"
-            type="info"
-            color="#3296fa"
-            round
-            :loading="isFollowLoading"
-            size="small"
-            icon="plus"
-            :src="article.aut_photo"
-            @click="onFollow"
-            >关注</van-button
-          >
-
-          <!-- <van-button
-            class="follow-btn"
-            round
-            size="small"
-          >已关注</van-button> -->
+            v-model="article.is_followed"
+            :userId="article.aut_id"
+          ></followUser>
         </van-cell>
         <!-- /用户信息 -->
 
@@ -62,7 +40,24 @@
           ref="article-content"
           v-html="article.content"
         ></div>
-        <van-divider> </van-divider>
+        <van-divider>正文结束</van-divider>
+        <comment-list
+          :source="article.art_id"
+          @updata-success="totalcount = $event"
+          :list="commentList"
+          @reply-click="onReplyClick"
+        ></comment-list>
+        <van-popup
+          v-model="isPostShow"
+          position="bottom"
+          round
+          :style="{ height: '25%' }"
+        >
+          <comment-post
+            :target="article.art_id"
+            @post-success="onPostSuccess"
+          ></comment-post>
+        </van-popup>
       </div>
       <!-- /加载完成-文章详情 -->
 
@@ -84,100 +79,134 @@
 
     <!-- 底部区域 -->
     <div class="article-bottom">
-      <van-button class="comment-btn" type="default" round size="small"
+      <van-button
+        class="comment-btn"
+        type="default"
+        round
+        size="small"
+        @click="isPostShow = true"
         >写评论</van-button
       >
-      <van-icon name="comment-o" info="123" color="#777" />
-      <van-icon color="#777" name="star-o" />
-      <van-icon color="#777" name="good-job-o" />
+      <van-icon name="comment-o" :info="totalcount" color="#777" />
+      <collectArticle
+        v-model="article.is_collected"
+        :articleId="article.art_id"
+        class="btn-item"
+      ></collectArticle>
+      <likeArticle
+        v-model="article.attitude"
+        :likedId="article.art_id"
+        class="btn-item"
+      ></likeArticle>
       <van-icon name="share" color="#777777"></van-icon>
     </div>
+    <van-popup
+      v-model="isReplyShow"
+      position="bottom"
+      :style="{ height: '100%' }"
+    >
+      <comment-reply
+        v-if="isReplyShow"
+        :comment="currentComment"
+        @close="isReplyShow = false"
+      ></comment-reply>
+    </van-popup>
     <!-- /底部区域 -->
   </div>
 </template>
 
 <script>
-import { getArticleById } from '../../api/article'
-import { ImagePreview } from 'vant'
-import { addFollow, deleteFollow } from '@/api/user'
+import { getArticleById } from "../../api/article";
+import { ImagePreview } from "vant";
+import followUser from "../../components/follow-user";
+import collectArticle from "../../components/collect-article";
+import likeArticle from "../../components/like-article";
+import CommentList from "./components/comment-list.vue";
+import CommentPost from "./components/comment-post.vue";
+import CommentReply from "./components/comment-reply.vue";
 export default {
-  name: 'ArticleIndex',
-  components: {},
+  name: "ArticleIndex",
+  components: {
+    followUser,
+    collectArticle,
+    likeArticle,
+    CommentList,
+    CommentPost,
+    CommentReply,
+  },
   props: {
     articleId: {
       type: [Number, String],
-      required: true
-    }
+      required: true,
+    },
   },
-  data () {
+  data() {
     return {
       article: {},
       loading: true,
       errStatus: 0,
-      isFollowLoading: false
-    }
+      isFollowLoading: false,
+      totalcount: "",
+      isPostShow: false,
+      isReplyShow: false,
+      commentList: [],
+      currentComment: {},
+    };
   },
   computed: {},
   watch: {},
-  created () {
-    console.log(this)
-    this.loadArticle()
+  created() {
+    console.log(this);
+    this.loadArticle();
   },
-  mounted () {},
+  mounted() {},
   methods: {
-    async loadArticle () {
-      this.loading = true
+    async loadArticle() {
+      this.loading = true;
       try {
-        const { data } = await getArticleById(this.articleId)
-        this.article = data.data
+        const { data } = await getArticleById(this.articleId);
+        this.article = data.data;
         setTimeout(() => {
-          this.previewImage()
-        })
+          this.previewImage();
+        });
       } catch (err) {
-        console.dir(err)
+        console.dir(err);
         if (err.response && err.response.status === 404) {
-          this.errStatus = 404
+          this.errStatus = 404;
         } else {
-          this.article = {}
+          this.article = {};
         }
       }
-      this.loading = false
+      this.loading = false;
     },
 
-    previewImage () {
-      const articleContent = this.$refs['article-content']
-      const imgs = articleContent.querySelectorAll('img')
+    previewImage() {
+      const articleContent = this.$refs["article-content"];
+      const imgs = articleContent.querySelectorAll("img");
 
-      const images = []
+      const images = [];
       imgs.forEach((img, index) => {
-        images.push(img.src)
+        images.push(img.src);
         img.onclick = () => {
           ImagePreview({
             images,
-            startPosition: index
-          })
-        }
-      })
+            startPosition: index,
+          });
+        };
+      });
     },
-    async onFollow () {
-      this.isFollowLoading = true
-      try {
-        const authorId = this.article.aut_id
-        console.log(authorId)
-        if (this.article.is_followed) {
-          await deleteFollow(authorId)
-        } else {
-          await addFollow(authorId)
-        }
-        this.arrticle.is_followed = !this.article.is_followed
-      } catch (err) {
-        console.log(err)
-        this.$toast.fail('操作失败')
-      }
-      this.isFollowLoading = false
-    }
-  }
-}
+    onPostSuccess(data) {
+      this.isPostShow = false;
+      // 将发布内容显示到列表顶部
+      this.commentList.unshift(data.new_obj);
+    },
+    onReplyClick(comment) {
+      this.currentComment = comment;
+      // 显示评论回复弹出层
+      this.isReplyShow = true;
+    },
+  },
+};
 </script>
 
 <style scoped lang="less">
@@ -286,6 +315,9 @@ export default {
       font-size: 15px;
       line-height: 23px;
       color: #a7a7a7;
+    }
+    .btn-item {
+      border: none;
     }
     .van-icon {
       font-size: 20px;

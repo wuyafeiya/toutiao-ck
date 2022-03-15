@@ -16,7 +16,7 @@
       >
       <van-tabbar-item to="/my">
         <i slot="icon" class="toutiao toutiao-wode"></i>
-        {{ this.$store.state.user ? "已登录" : "未登录" }}</van-tabbar-item
+        {{ this.$store.state.user ? "我的" : "未登录" }}</van-tabbar-item
       >
     </van-tabbar>
   </div>
@@ -24,12 +24,12 @@
 
 <script>
 export default {
-  data () {
+  data() {
     return {
-      active: 0
-    }
-  }
-}
+      active: 0,
+    };
+  },
+};
 </script>
 
 <style>
